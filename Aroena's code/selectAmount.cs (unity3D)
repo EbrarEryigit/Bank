@@ -1,0 +1,96 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using System.IO.Ports;
+using UnityEngine.SceneManagement;
+
+public class selectAmount : MonoBehaviour
+{
+    private int saldo; //het saldo van de rekeninghouder
+    public int voldoendeSaldo; //nummer van het volgende scherm bij voldoende saldo (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    public int onvoldoendeSaldo; //nummer van het volgende scherm bij onvoldoende saldo (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    public int anderBedrag; //nummer van het volgende scherm waar een ander bedrag gekozen kan worden (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    private int beginScreen = 0; //nummer van het scherm "voer uw kaart in"
+    public int vorigScreen; //nummer van het vorige scherm (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    private int data; //data die ontvangen wordt van de Arduino
+    SerialPort sp = new SerialPort(globalHandler.getSerialPort(), 9600); //stel de serial communicatie in
+    
+    void Start()
+    {
+        sp.Open(); //begin de serial communicatie
+        sp.ReadTimeout = 1000; //een timeout op fouten te voorkomen
+    }
+
+    void Update()
+    {
+        saldo = globalHandler.getSaldo(); //check het huidige saldo van de rekeninghouder
+
+        if (sp.IsOpen) //wanneer de serial communicatie beschikbaar is
+        {
+            try
+            {
+                sp.Write ("2"); //deze code maakt duidelijk aan de Arduino welke functie hij aan moet roepen
+                data = sp.ReadByte(); //ontvang data van de Arduino );
+                
+                if (data == 1) //gebruiker drukt op 10
+                {
+                    if (10 <= saldo){ //wanneer het saldo hoger of gelijk is aan de op te nemen 10
+                        globalHandler.setTransactionAmmount(10); //sla op hoeveel de rekeninghouder op wil nemen
+                        SceneManager.LoadScene(voldoendeSaldo); //laad het volgende scherm 
+                    } else {
+                        SceneManager.LoadScene(onvoldoendeSaldo); 
+                    }
+                }
+
+                if (data == 2) //gebruiker drukt op 30
+                {
+                   if (30 <= saldo){ //wanneer het saldo hoger of gelijk is aan de op te nemen 30
+                        globalHandler.setTransactionAmmount(30); //sla op hoeveel de rekeninghouder op wil nemen
+                        SceneManager.LoadScene(voldoendeSaldo); //laad het volgende scherm 
+                    } else {
+                        SceneManager.LoadScene(onvoldoendeSaldo); //laad het volgende scherm met de melding "onvoldoende saldo"
+                    }
+                }
+
+                if (data == 3) //gebruiker drukt op 100
+                {
+                   if (100 <= saldo){ //wanneer het saldo hoger of gelijk is aan de op te nemen 100
+                        globalHandler.setTransactionAmmount(100); //sla op hoeveel de rekeninghouder op wil nemen
+                        SceneManager.LoadScene(voldoendeSaldo); //laad het volgende scherm 
+                    } else {
+                        SceneManager.LoadScene(onvoldoendeSaldo); //laad het volgende scherm met de melding "onvoldoende saldo"
+                    }
+                }
+
+                if (data == 4) //gebruiker drukt op 150
+                {
+                    if (150 <= saldo){ //wanneer het saldo hoger of gelijk is aan de op te nemen 150
+                        globalHandler.setTransactionAmmount(150); //sla op hoeveel de rekeninghouder op wil nemen
+                        SceneManager.LoadScene(voldoendeSaldo); //laad het volgende scherm 
+                    } else {
+                        SceneManager.LoadScene(onvoldoendeSaldo); //laad het volgende scherm met de melding "onvoldoende saldo"
+                    }
+                }
+
+                if (data == 5) //gebruiker drukt op ander bedrag
+                {
+                    SceneManager.LoadScene(anderBedrag); //laad het help menu
+                }
+
+                if (data == 250) //gebruiker drukt op *
+                {
+                    SceneManager.LoadScene(vorigScreen); //ga terug naar het vorige scherm
+                }
+
+                if (data == 243) //gebruiker drukt op #
+                {
+                    SceneManager.LoadScene(beginScreen); //ga helemaal terug naar kaart invoeren
+                }
+               
+            }
+            catch (System.Exception){} //doe niks wanneer het voorgaande stuk code niet werkte
+        }
+    }
+    
+}
