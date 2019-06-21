@@ -1,0 +1,49 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using System.IO.Ports;
+using System.Threading;
+using UnityEngine.SceneManagement;
+using System;
+using System.Threading;
+
+public class kaartScanner : MonoBehaviour
+{
+    private string scanKaart; //de UID van de gescande kaart
+    public int nextScreen; //nummer van het volgende scherm dat geladen moet worden (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    SerialPort sp = new SerialPort(globalHandler.getSerialPort(), 9600); //stel de serial communicatie in
+
+    private void Start() 
+    {
+        System.Threading.Thread.Sleep(3000); //wacht even met het inladen van deze scene, zodat de rekeninghouder de tekst uit het vorige scherm kan lezen
+        sp.Open(); //begin de serial communicatie
+        sp.ReadTimeout = 1000; //een timeout om fouten te voorkomen
+        sp.Write("1"); //deze code maakt duidelijk aan de Arduino welke functie hij aan moet roepen     
+    }
+
+    private void Update()
+    {
+        try
+        {
+
+            if (sp.IsOpen) //wanneer de serial communicatie beschikbaar is
+            { 
+                sp.Write ("1"); //deze code maakt duidelijk aan de Arduino welke functie hij aan moet roepen   
+            }
+            
+            scanKaart = sp.ReadLine(); //ontvang de kaartdata van de Arduino en sla deze op
+
+        }
+        catch{} //doe niks wanneer het voorgaande stuk code niet werkte
+
+
+        if (!globalHandler.doesCardExist (scanKaart)){
+           //kaart staat niet in de database, doe niks
+        }
+        else if (globalHandler.doesCardExist (scanKaart)){
+            SceneManager.LoadScene(nextScreen); //ga door naar het volgende scherm
+        }
+    }
+    
+}
