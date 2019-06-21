@@ -1,0 +1,98 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class globalHandler : MonoBehaviour
+{
+
+  /* Ik heb deze global handler gemaakt om tussen de scenes door gegevens op te kunnen slaan en op te kunnen vragen. Wanneer een rekeninghouder in de scene
+  "opnemen" bijvoorbeeld in typt dat hij een bedrag van 100 op wil nemen, wordt dat hier opgeslagen en niet in een script van de scene zelf. Als je dit bedrag
+  namelijk puur in de scene op zou slaan, kan je hier later in het pinproces niet meer bij. Vandaar dat alles centraal in één script op wordt geslagen. */
+
+  private static string serialPort = "COM6"; //de poort die de GUI moet gebruiken om met de Arduino te kunnen communiceren
+  private static bool exist = true; //bestaat er een kaart met deze UID binnen de database?
+  private static int pogingen = 3; //hoeveelheid pogingen die een rekeninghouder heeft om zijn of haar pincode in te vullen
+  private static int saldo = 100; //het saldo van de rekeninghouder 
+  private static string pincode = "1111"; //de pincode van de rekeninghouder
+  private static int ammount = 80; //het bedrag dat de gebruiker op wil nemen
+  private static int bon = 0; //of de gebruiker de bon wil, "1" = ja, "0" = nee
+
+    void Start()
+    {
+        
+    }
+
+    void Update()
+    {
+        
+    }
+
+    public static string getSerialPort (){
+        return serialPort; //geef terug welke serial port er gebruikt moet worden voor de communicatie
+    }
+
+    public static bool doesCardExist(string pasId)
+    {
+        //check in de database of de kaart bestaat (nog een missend stuk code)
+        //nu hard coded de UID van mijn kaart ingevuld omdat de connectie met de database nog niet goed verloopt
+        if (pasId == "20 69 55 1C"){
+            exist = true;
+        } 
+        else{
+            exist = false;
+        }
+        return exist;
+    }
+
+    public static int getSaldo()
+    {
+        //check in de database het saldo (nog een missend stuk code)
+        return saldo;
+    }
+
+    public static string getPincode()
+    {
+        //check in de database de pincode (nog een missend stuk code)
+        return pincode;
+    }
+
+    public static int getPogingen()
+    {
+        //check in de database hoeveel pogingen de rekeninghouder nog over heeft (nog een missend stuk code)
+        return pogingen;
+    }
+
+    public static int getTransactionAmmount()
+    {
+        //geef het op te nemen bedrag door aan de GUI
+        return ammount;
+    }
+
+     public static int getBon()
+    {
+        //geef door aan de GUI of de gebruiker de bol wil
+        return bon;
+    }
+
+    public static void setTransactionAmmount(int Ammount )
+    {
+        ammount = Ammount;
+        saldo = saldo - ammount;
+        //geef de transactie door aan de database (nog een missend stuk code)
+    }
+
+     public static void setBon(int Bon)
+    {
+        //sla op of de gebruiker de bon wil
+        bon = Bon;
+    }
+
+    public static void setPogingen(int poging)
+    {
+        if (poging >= 0){
+            pogingen = poging;
+        }
+        //geef het aantal resterende pogingen door aan de database (nog een missend stuk code)
+    }
+
+}
