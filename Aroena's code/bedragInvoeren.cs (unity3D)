@@ -1,0 +1,76 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using System.IO.Ports;
+using UnityEngine.SceneManagement;
+using System;
+
+public class bedragInvoeren : MonoBehaviour
+{
+    public Text keuzeBedrag; //de tekst die in de GUI het op te nemen bedrag laat zien
+    public int voldoendeSaldo; //nummer van het volgende scherm dat geladen moet worden bij voldoende saldo (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    public int onvoldoendeSaldo; //nummer van het volgende scherm dat geladen moet worden bij onvoldoende saldo (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    private int beginScreen = 0; //nummer van het scherm "voer uw kaart in" 
+    public int vorigScreen; //nummer van het vorige scherm (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    private int data; //data die ontvangen wordt van de Arduino
+    private string invoer; //de ingevoerde getallen (als een string omdat anders de losse getallen bij elkaar opgeteld zouden worden)
+    private int saldo; //het saldo van de rekeninghouder
+    SerialPort sp = new SerialPort(globalHandler.getSerialPort(), 9600); //stel de serial communicatie in
+    
+    void Start()
+    {
+        sp.Open(); //begin de serial communicatie
+        sp.ReadTimeout = 1000; //een timeout om fouten te voorkomen
+    }
+
+    void Update()
+    {
+        saldo = globalHandler.getSaldo(); //verkrijg het saldo uit de database
+
+        if (sp.IsOpen) //wanneer de serial communicatie beschikbaar is
+        {
+            try
+            {
+
+                sp.Write ("2"); //deze code maakt duidelijk aan de Arduino welke functie hij aan moet roepen
+                data = sp.ReadByte(); //ontvang data van de Arduino
+                
+                if (data == 17) //gebruiker drukt op accept knop
+                {
+                    if (Int32.Parse(invoer) <= saldo && Int32.Parse(invoer)%10 == 0 && Int32.Parse(invoer) != 0 ){ //wanneer het op te nemen bedrag: hoger is dan het saldo, een veelvoud van 10 is en geen 0
+                        globalHandler.setTransactionAmmount(Int32.Parse(invoer)); //geef het op te nemen bedrag door aan de global handler
+                        SceneManager.LoadScene(voldoendeSaldo); //laad het volgende scherm
+                    } else {
+                        SceneManager.LoadScene(onvoldoendeSaldo); //laad het volgende scherm
+                      }
+                }
+
+                if (data == 19) //gebruiker drukt op cancel knop
+                {
+                    invoer = ""; //verwijder de ingevoerde getallen
+                    keuzeBedrag.text = invoer; //verwijder de ingevoerde getallen van de GUI
+                }
+
+                if (data >= 0 && data <= 9) //ontvangen getal vanaf de keypad
+                {
+                    invoer = invoer + data.ToString(); //plak het ingevoerde getal achter de reeds ingevoerde getallen
+                    keuzeBedrag.text = invoer; //laat het huidige keuzebedrag zien in de GUI
+                }
+
+                if (data == 250) //gebruiker drukt op *
+                {
+                    SceneManager.LoadScene(vorigScreen); //ga terug naar het vorige scherm
+                }
+
+                if (data == 243) //gebruiker drukt op #
+                {
+                    SceneManager.LoadScene(beginScreen); //ga helemaal terug naar kaart invoeren
+                }
+
+            }
+            catch (System.Exception){} //doe niks wanneer het voorgaande stuk code niet werkte
+        }
+    }
+    
+}
