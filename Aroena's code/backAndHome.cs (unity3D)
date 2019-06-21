@@ -1,0 +1,46 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using System.IO.Ports;
+using UnityEngine.SceneManagement;
+
+public class backAndHome : MonoBehaviour
+{
+    private int data; //data die ontvangen wordt van de Arduino
+    private int beginScreen = 0; //nummer van het scherm "voer uw kaart in" 
+    public int vorigScreen; //nummer van het vorige scherm (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    SerialPort sp = new SerialPort(globalHandler.getSerialPort(), 9600); //stel de serial communicatie in
+    
+    void Start()
+    {
+        sp.Open(); //begin de serial communicatie
+        sp.ReadTimeout = 1000; //een timeout om fouten te voorkomen
+    }
+
+    void Update()
+    {
+        if (sp.IsOpen) //wanneer de serial communicatie beschikbaar is
+        {
+            try
+            {
+
+                sp.Write ("2"); //deze code maakt duidelijk aan de Arduino welke functie hij aan moet roepen
+                data = sp.ReadByte(); //ontvang data van de Arduino
+                
+                if (data == 250) //gebruiker drukt op *
+                {
+                    SceneManager.LoadScene(vorigScreen); //ga terug naar het vorige scherm
+                }
+
+                if (data == 243) //gebruiker drukt op #
+                {
+                    SceneManager.LoadScene(beginScreen); //ga helemaal terug naar kaart invoeren
+                }
+               
+            }
+            catch (System.Exception){} //doe niks wanneer het voorgaande stuk code niet werkte
+        }
+    }
+    
+}
