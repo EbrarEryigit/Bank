@@ -1,0 +1,245 @@
+import java.awt.EventQueue;
+import java.util.Scanner;
+import java.util.regex.Pattern;
+
+public class Alga {
+	
+	Serial arduino = new Serial(); //Call Serial constructor
+	GUI window;
+	String pin = "1234"; // Pincode
+	int AantalCorrect = 0; // Aantalpogingen van je pincode
+	int Saldo = 300; // Saldo bedrag
+	int bedrag = 0; // Geld dat ik pin
+	String screens = "begin"; // beginScherm
+	
+	public static void main(String[] args) {	
+		
+			while(true) {
+				new Alga();
+			}
+	}
+	
+	public Alga() {
+		// TODO Auto-generated constructor stub
+		String input = "";
+		Thread t = new Thread(arduino, "arduino");
+		t.start();
+		
+		window = new GUI();
+		window.frame.setVisible(true);
+		screens = "begin";
+		
+		while(true) {
+			switch(screens) {
+			case "begin" : // beginScherm
+				window.cardLayout.show(window.pnl_body, "beginScherm");
+				checkCard(); // functie checkCard
+				screens = "pin";
+				break;
+			case "pin" : // pinScherm
+				String ipin = "";
+				window.cardLayout.show(window.pnl_body, "pincodeScherm");
+				do {
+					if(AantalCorrect>=3) { // Pincode meer dan 3 keer fout ingevoerd
+						window.cardLayout.show(window.pnl_body, "blokScherm");
+						System.out.println("failed to login");
+						try {
+							Thread.sleep(5000);
+							window.frame.dispose();
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						return;
+				
+					}AantalCorrect++;
+					ipin = readPin(); // functie readPin
+				}while(!pin.equals(ipin));
+				AantalCorrect = 0;
+				screens = "menu";
+				break;
+			case "menu" : // menuScherm
+				
+				window.cardLayout.show(window.pnl_body, "menuScherm");
+				input = input(); // wacht op een input
+						if(input.equals("D")) { // saldoScherm	
+							System.out.println("Gaat het naar de saldoScherm");
+							screens = "saldo";
+						}	else if(input.equals("B")) { // opneemScherm
+							System.out.println("Gaat het naar de opneemScherm");
+							screens = "opneem";
+						}	else if(input.equals("C")) { // beginScherm
+							System.out.println("Gaat het naar de beginScherm");
+							screens = "begin";
+						}	else if(input.equals("A")) { // snelOpnemen ------> bonScherm
+							System.out.println("Gaat het naar de bonScherm");
+							if (opnemen(70)) {
+								screens = "bon";
+							} else {
+								screens = "menu";
+							}
+						}
+				
+				break;
+			case "saldo": // saldoScherm
+				
+				GUI.Saldo.setText("saldo is : " + Saldo);
+				window.cardLayout.show(window.pnl_body, "saldoScherm");
+				input = input(); // wacht op een input
+				
+				if(input.equals("A")) { 
+					System.out.println("Naar het beginScherm");
+					screens = "begin";  // beginScherm
+				} else if(input.equals("B")) { 
+					System.out.println("Naar het menuScherm");
+					screens = "menu"; // menuScherm
+				}
+				
+				break;
+			case "opneem": // opneemScherm
+				
+				GUI.lblBedrag.setText(Integer.toString(bedrag));
+				window.cardLayout.show(window.pnl_body, "opneemScherm");
+				input = input(); // wacht op een input
+				if (input.equals("1")){
+					bedrag += 10; // nieuw bedrag plus gekozen bedrag
+					
+				} else if (input.equals("2")) {
+					bedrag += 20; // nieuw bedrag plus gekozen bedrag
+					
+				} else if (input.equals("3")) {
+					bedrag += 50; // nieuw bedrag plus gekozen bedrag
+					
+				} else if(input.equals("B")) {
+					System.out.println("Ga terug naar het menuScherm");
+					screens = "menu"; // menuScherm
+					bedrag = 0; // bedrag word gereset
+				
+				} else if(input.equals("C")) {
+					System.out.println("Verwijder alles");
+					bedrag = 0; // bedrag word gereset
+				
+				} else if (input.equals("A")) {
+					if (opnemen(bedrag)) {
+						screens = "bon";// bonScherm
+						bedrag = 0; 
+				}
+				else {
+						bedrag = 0;
+						screens = "menu"; // menuScherm
+					}
+				}
+				
+				break;
+			case "eind": // eindScherm
+				window.cardLayout.show(window.pnl_body, "eindScherm");
+				try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				screens = "begin";
+				break;
+			case "bon": // bonScherm
+				window.cardLayout.show(window.pnl_body, "bonScherm");
+				
+				input = input(); // wacht op een input
+				
+				if(input.equals("B")) { 
+					System.out.println("Fijne dag verder");
+					screens = "eind"; // eindScherm
+				}if(input.equals("A")) { 
+					System.out.println("Fijne dag verder");
+					screens = "eind"; // eindScherm
+				}if(input.equals("D")) { 
+					System.out.println("Wilt u een euro doneren");
+					System.out.println("ga naar het doneerScherm");
+					screens ="doneer"; // doneerscherm
+				}
+				break;
+			case "doneer": // doneerScherm
+				window.cardLayout.show(window.pnl_body, "doneerScherm");
+				
+				input = input(); // wacht op een input
+				
+				System.out.println("Wilt u een euro doneren aan hongerige kinderen in Colombia?");
+				
+				if(input.equals("A")) {
+					screens = "bon"; // bonScherm
+				}
+				break;
+				default:
+			}
+		}
+		
+	}
+	
+		private String checkCard() { //(beginScherm) checkt de kaart of het bestaat
+			
+			while(true) {
+				
+				String input = arduino.getInput(); // input van arduino uno serial communicatie
+				
+				if (input != null) {
+					System.out.println(input);
+					if(input.length()>= 7) {
+						return input;	
+					}				
+				}
+			}
+			
+		}
+	
+		private String readPin() { // (pincodeScherm) checkt of de pincode overeen komt 
+			String PIN = "";
+			
+			while(true) {
+				
+				String input = arduino.getInput(); // input van arduino uno serial communicatie
+				
+				if (input != null) {
+					
+					System.out.println(input);
+					if(input.equals("D")) {
+						System.out.println("returning PIN "+ PIN);
+						return PIN;
+					}else if(PIN.length()<=4 && !Pattern.matches("[a-zA-Z]", input)) {
+						PIN+=input; // telt het op bij input
+					}
+					
+				}
+	
+			}
+	
+		}
+		
+				
+		public boolean opnemen(int Geld) { //opneemScherm checkt of de gebruiker genoeg saldo heeft
+							
+			if(Saldo >= Geld) { // Kijkt of je genoeg saldo hebt
+				System.out.println("User took : " + Geld);
+				Saldo=-Geld; // Nieuwe saldo 
+				return true;
+									
+				} else {
+					System.out.println("Geen genoeg geld");
+					screens = "menu"; // menuScherm
+					return false;
+				}
+							
+		}
+			
+			private String input() { // Geeft de input 
+				
+				while(true) {
+					String input = arduino.getInput(); // input van arduino uno serieele communicatie
+					
+								if (input != null) {
+									System.out.println(input);
+									return input;
+								}
+				}
+			}
+}
+
