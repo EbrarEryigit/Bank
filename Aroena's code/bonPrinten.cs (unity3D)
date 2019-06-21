@@ -1,0 +1,55 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using System.IO.Ports;
+using UnityEngine.SceneManagement;
+using System;
+using System.Threading;
+
+
+
+
+public class bonPrinten : MonoBehaviour
+{
+    public int nextScreen; //nummer van het volgende scherm dat geladen moet worden (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    public int vorigScreen; //nummer van het vorige scherm (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    private int bon; //wil de rekeninghouder de bon? 1 voor "ja" en 0 voor "nee"
+    private int data; //data die ontvangen wordt van de Arduino
+    SerialPort sp = new SerialPort(globalHandler.getSerialPort(), 9600); //stel de serial communicatie in
+
+    void Start()
+    {
+        sp.Open(); //begin de serial communicatie
+        sp.ReadTimeout = 1000; //een timeout om fouten te voorkomen
+    }
+
+    void Update()
+    {  
+        if (sp.IsOpen) //wanneer de serial communicatie beschikbaar is
+        {
+            try
+            {
+                sp.Write ("2"); //deze code maakt duidelijk aan de Arduino welke functie hij aan moet roepen
+                data = sp.ReadByte(); //ontvang data van de Arduino
+
+                if (data == 17) //gebruiker drukt op a (gebruiker wil de bon)
+                {
+                    bon = 1;
+                    globalHandler.setBon(bon); //geef door aan de global handler dat de gebruiker een bon wil
+                    SceneManager.LoadScene(nextScreen); //ga door naar het volgende scherm
+                }
+                if (data == 19) //gebruiker drukt op b (gebruiker wil geen bon)
+                {
+                    bon = 0;
+                    globalHandler.setBon(bon); //geef door aan de global handler dat de gebruiker geen bon wil
+                    SceneManager.LoadScene(nextScreen); //ga door naar het volgende scherm
+                }
+
+            }
+            catch (System.Exception){} //doe niks wanneer het voorgaande stuk code niet werkt
+        }
+    }
+            
+}
+
