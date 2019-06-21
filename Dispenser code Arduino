@@ -1,0 +1,191 @@
+#include <AccelStepper.h>    
+#include <Wire.h>      
+#include "Adafruit_Thermal.h"
+
+Adafruit_Thermal printer(&Serial); //om met de printer te kunnen communiceren
+
+//----de stepper voor 10 COL$----  
+#define motorPin2  2               
+#define motorPin3  3                
+#define motorPin4  4            
+#define motorPin5  5
+//----de stepper voor 20 COL$----          
+#define motorPin6  6               
+#define motorPin7  7              
+#define motorPin8  8            
+#define motorPin9  9 
+//----de stepper voor 50 COL$----        
+#define motorPin10  10          
+#define motorPin11  11               
+#define motorPin12  12               
+#define motorPin13  13  
+             
+int stepsPerRevolution = 64;      
+int degreePerRevolution = 5.625; 
+
+AccelStepper stepper1(AccelStepper::HALF4WIRE, motorPin2, motorPin4, motorPin3, motorPin5); //de stepper voor 10 COL$
+AccelStepper stepper2(AccelStepper::HALF4WIRE, motorPin6, motorPin8, motorPin7, motorPin9); //de stepper voor 20 COL$
+AccelStepper stepper3(AccelStepper::HALF4WIRE, motorPin10, motorPin12, motorPin11, motorPin13); //de stepper voor 50 COL$
+
+int ammount; //het op te nemen bedrag
+int bon; //of de gebruiker de bon wil, 1 = ja, 0 = nee
+int ammountVoorBon; //het bedrag dat op de bon komt te staan
+int dispenseVijftig; //hoeveel briefjes van 50 er uitgegeven moeten worden
+int dispenseTwintig; //hoeveel briefjes van 20 er uitgegeven moeten worden
+int dispenseTien; //hoeveel briefjes van 10 er uitgegeven moeten worden
+
+//voorraadstanden van de briefjes
+int voorraadVijftig = 8;
+int voorraadTwintig = 8;
+int voorraadTien = 8;
+
+void setup() {
+  Serial.begin(9600); //begin de serial communicatie
+  Wire.begin(8); //begin I2C op adres 8
+  Wire.onReceive(receiveData); 
+  
+  printer.begin(); //start de printer
+
+  //----de stepper voor 10 COL$----
+  stepper1.setMaxSpeed(1000.0); //stel de maximale motorsnelheid in
+  stepper1.setAcceleration(100.0); //stel de acceleratie in
+  stepper1.setSpeed(200); //stel de huidige snelheid in
+  //----de stepper voor 20 COL$----
+  stepper2.setMaxSpeed(1000.0); //stel de maximale motorsnelheid in
+  stepper2.setAcceleration(100.0); //stel de acceleratie in
+  stepper2.setSpeed(200); //stel de huidige snelheid in
+  //----de stepper voor 50 COL$----
+  stepper3.setMaxSpeed(1000.0); //stel de maximale motorsnelheid in
+  stepper3.setAcceleration(100.0); //stel de acceleratie in
+  stepper3.setSpeed(200); //stel de huidige snelheid in
+}
+
+void loop() {
+  if (ammount > 0){ //wanneer het ontvangen gewenste bedrag groter is dan 0
+    calculate();
+  }
+}
+
+void receiveData(int numBytes)
+{
+  ammount = Wire.read(); //ontvang het op te nemen bedrag
+  bon = Wire.read(); //ontvang de bonkeuze
+}
+
+
+void calculate(){
+
+  ammountVoorBon = ammount; //sla hier het bedrag op voor de bon omdat ammount hieronder steeds gewijzigd wordt
+  
+  //onderstaand "algortime" zorgt ervoor dat het het geld zo groot mogelijk wordt uitgegeven (dus eerst 50, dan 20, dan 10)
+  
+  while (ammount>0){ //zolang het resterende bedrag groter is dan 0
+    while (ammount>=50){ //zolang het resterende bedrag groter is dan 50
+        dispenseVijftig++; //houd bij hoeveel briefjes er uitgegeven worden (voor op de bon)
+        ammount = ammount-50; //trek 50 van het resterende bedrag af
+    }
+
+    while (ammount>=20){ //zolang het resterende bedrag groter is dan 20
+        dispenseTwintig++; //houd bij hoeveel briefjes er uitgegeven worden (voor op de bon)
+        ammount = ammount-20; //trek 20 van het resterende bedrag af    
+    }
+
+    while (ammount>=10){ //zolang het resterende bedrag groter is dan 10
+        dispenseTien++; //houd bij hoeveel briefjes er uitgegeven worden (voor op de bon)
+        ammount = ammount-10; //trek 10 van het resterende bedrag af   
+    }
+    
+    ammount = 0; //alles is uitgeworpen dus ammount is "0" (puur voor de zekerheid);
+    dispense(); //ga door naar de echte uitgifte, dit was puur het berekenen
+    
+ } 
+}
+
+void dispense(){
+
+  //draai 360 graden per briefje dat uitgegeven moet worden
+  stepper1.moveTo(degToSteps(360*dispenseTien));
+  stepper2.moveTo(degToSteps(360*dispenseTwintig));
+  stepper3.moveTo(degToSteps(360*dispenseVijftig));
+  
+  while(stepper1.distanceToGo()>0 || stepper2.distanceToGo()>0 || stepper3.distanceToGo()>0){ //wanneer 1 van de steppers zijn beoogde positie nog niet heeft bereikt
+    //laat de steppers bewegen
+    stepper1.run();         
+    stepper2.run();                     
+    stepper3.run();                    
+  } 
+
+//houd de voorraad bij (wordt nu nog niets mee gedaan, maar zou gebruikt kunnen worden voor het verbeteren van het algortime)
+voorraadTien = voorraadTien - dispenseTien;
+voorraadTwintig = voorraadTwintig - dispenseTwintig;
+voorraadVijftig = voorraadVijftig - dispenseVijftig;
+
+//de huidige positie van de steppers is nu de beginpositie (handig voor de volgende keer)
+stepper1.setCurrentPosition(0);
+stepper2.setCurrentPosition(0);
+stepper3.setCurrentPosition(0);
+
+printBon(); //ga naar de print bon functie
+}
+
+void printBon(){
+
+ if (bon == 1){ //wanneer de rekeninghouder de bon wil
+  printer.justify('C');
+  printer.setSize('L');        
+  printer.println(F("Banco Cocaina"));
+  printer.println(F("----------------"));
+  printer.justify('L');
+  printer.setSize('S');
+  printer.println(F("Bedankt voor uw transactie bij"));
+  printer.println(F("Banco Cocaina."));
+  printer.println(F(""));
+  printer.println(F(""));
+  printer.print(F("Opgenomen bedrag: "));
+  printer.print(ammountVoorBon); //het bedrag dat is opgenomen
+  printer.println(F(" COL$"));
+  printer.println(F(""));
+
+    //onderstaande toont hoeveel er van elk biljet is uitgeworpen
+    Serial.println("Opgenomen biljetten:");
+    Serial.println("");
+    Serial.print("vijftig: ");
+    Serial.print(dispenseVijftig);
+    Serial.println(" x");
+    Serial.print("twintig: ");
+    Serial.print(dispenseTwintig);
+    Serial.println(" x");
+    Serial.print("tien:    ");
+    Serial.print(dispenseTien);
+    Serial.println(" x");
+
+    Serial.println("");
+    Serial.print("Transactie datum: ");
+    Serial.println("21-06-2019");//hard coded transactie datum, dit dient dus iedere dag geupdate te worden
+    printer.setBarcodeHeight(100);
+    printer.printBarcode("123456789123", UPC_A); //een standaard barcode, just for fun
+
+  
+  printer.feed(2);
+  printer.sleep();      
+  delay(3000L);         
+  printer.wake();       
+  printer.setDefault(); 
+ }
+  //reset de onderstaande variabelen
+  bon = 0;
+  dispenseTien = 0;
+  dispenseTwintig = 0;
+  dispenseVijftig = 0;
+  
+  //stuur een bericht naar de GUI-arduino dat de dispenser klaar is met de uitgifte
+  Wire.beginTransmission(0);
+  Wire.write(112);
+  Wire.endTransmission();
+  
+  loop(); //begin weer in de loop
+}
+
+float degToSteps(float deg) {
+  return (stepsPerRevolution / degreePerRevolution) * deg;
+}
