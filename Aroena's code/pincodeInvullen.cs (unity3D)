@@ -1,0 +1,89 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using System.IO.Ports;
+using UnityEngine.SceneManagement;
+
+public class pincodeInvullen : MonoBehaviour
+{
+    public Text tekst; //tekst met "vul uw pincode in"
+    public Text pincode; //pincode die wordt ingevuld
+    private int data; //data die ontvangen wordt van de Arduino
+    public int nextScreen; //nummer van het volgende scherm dat geladen moet worden (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    private int beginScreen = 0; //nummer van het scherm "voer uw kaart in"
+    public int vorigScreen; //nummer van het vorige scherm (public zodat dit in de editor gemakkelijk gewijzigd kan worden)
+    private int pogingen = 3; //het aantal pogingen dat gedaan mag worden voordat de pas geblokkeerd wordt
+    private int starCount; //aantal sterren (1 per ingevoerd cijfer)
+    private string invulPin; //pincode die wordt ingevuld door de rekeninghouder
+    private int databasePin; //de pincode die in de database staat (de pincode die hoort bij de pas)
+    SerialPort sp = new SerialPort(globalHandler.getSerialPort(), 9600); //stel de serial communicatie in
+    
+    void Start()
+    {
+        sp.Open(); //begin de serial communicatie
+        sp.ReadTimeout = 1000; //een timeout op fouten te voorkomen
+    }
+
+    void Update()
+    {
+        if (sp.IsOpen) //wanneer de serial communicatie beschikbaar is
+        {
+            try
+            {
+                sp.Write ("2"); //deze code maakt duidelijk aan de Arduino welke functie hij aan moet roepen
+                data = sp.ReadByte(); //ontvang data van de Arduino line
+                
+                if (data == 17) //gebruiker drukt op accept
+                {
+                    pinCheck(); //check of de pincode juist is
+                }
+                if (data == 19) //gebruiker drukt op cancel
+                {
+                    invulPin = ""; //verwijder de ingevulde pincode
+                    starCount = 0; //haal alle "*" weg uit de GUI
+                    pincode.text = string.Concat(System.Linq.Enumerable.Repeat("*", starCount)); //update de "*" in de GUI (haal ze weg)
+                }
+
+                if (data >= 0 && data <= 9) //ontvangen getal vanaf de keypad
+                {
+                    invulPin = invulPin + data.ToString(); //voeg nummer toe aan de tot nu toe ingevulde pincode
+                    starCount++; //voeg een "*" toe aan de GUI
+                    pincode.text = string.Concat(System.Linq.Enumerable.Repeat("*", starCount)); //laat de "*" zien in de GUI
+                }
+
+                if (data == 243) //gebruiker drukt op #
+                {
+                    SceneManager.LoadScene(beginScreen); //ga helemaal terug naar kaart invoeren
+                }
+
+            }
+            catch (System.Exception){} //doe niks wanneer het voorgaande stuk code niet werkte
+        }
+    }
+    
+    private void pinCheck(){
+        if(globalHandler.getPincode() == invulPin) //de code is correct ingevoerd
+            {
+                pogingen = 3; //reset het aantal pogingen
+                SceneManager.LoadScene(nextScreen); //laad het volgende scherm
+            }
+
+                if (globalHandler.getPincode() != invulPin) //de code is fout ingevoerd
+                {
+                    invulPin = ""; //haal de pincode weg
+                    pogingen--; //de rekeninghouder heeft nu een invoerpoging minder
+                    if (pogingen <= 0) //wanneer de rekeninghouder geen pogingen meer over heeft
+                    {
+                        tekst.text = "Uw pas is geblokkeerd. Neem contact op met uw bank ";
+                        SceneManager.LoadScene(beginScreen); SceneManager.LoadScene(beginScreen); //laad het beginscherm (een andere rekeninghouder kan nu gebruik maken van de geldautomaat)
+                    }
+                    else //wanneer de rekeninghouder nog pogingen over heeft
+                    {
+                        tekst.text = "De ingevoerde pincode is onjuist. Probeer het opnieuw. Pogingen over: " + pogingen.ToString(); //laat het aantal resterende pogingen zien
+                        starCount = 0; //haal alle "*" weg uit de GUI
+                        pincode.text = string.Concat(System.Linq.Enumerable.Repeat("*", starCount)); //update de "*" in de GUI (haal ze weg)
+                    }
+                }
+    }
+}
