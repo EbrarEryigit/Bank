@@ -1,0 +1,75 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using System.IO.Ports;
+using UnityEngine.SceneManagement;
+using System;
+using System.Threading;
+
+public class evenGeduld : MonoBehaviour
+{
+    
+    private int data; //data die ontvangen wordt van de Arduino
+    private String totaal; //de totale data string die naar de Arduino gestuurd moet worden
+    private String combineCheck; //tussenstap om de "totaal" string te maken
+    private int combineLength; //de lengte van het op te nemen bedrag
+    private int beginScreen = 0; //nummer van het scherm "voer uw kaart in" 
+    SerialPort sp = new SerialPort(globalHandler.getSerialPort(), 9600); //stel de serial communicatie in
+
+    void Start()
+    {
+        sp.Open(); //begin de serial communicatie
+        sp.ReadTimeout = 1000; //een timeout om fouten te voorkomen
+        sp.Write("3"); //deze code maakt duidelijk aan de Arduino welke functie hij aan moet roepen  
+    }
+
+
+    void Update()
+    {
+         if (sp.IsOpen) //wanneer de serial communicatie beschikbaar is
+        {
+            try
+            {
+                /*
+                De GUI stuurt een aantal losse getallen naar de Arduino. Elke positie heeft een eigen betekenis. Het eerste getal in de "totaal" string staat
+                voor de hoeveelheid getallen waaruit het op te nemen bedrag bestaat (voorbeeld: bij een bedrag van 100 zou dit 3 zijn en bij een bedrag van 50
+                zou dit 2 zijn). Het tweede getal in de "totaal" string bestaat uit een 1 of een 0. Wanneer dit getal 1 is wil de gebruiker de bon en bij 0 wil
+                de gebruiker geen bon. De getallen na deze 2 getallen staan voor het op te nemen bedrag. De lengt van het bedrag wordt door het eerste getal van 
+                de string aangegeven (zoals eerder vermeld) zodat de Arduino precies weet hoeveel getallen hij van de serial moet lezen.  
+                
+                Voorbeeld:
+                Gebruiker wil 180 opnemen en wil een bon.
+                
+                totaal string: 31180
+                */
+
+
+               combineCheck = globalHandler.getBon().ToString() + globalHandler.getTransactionAmmount().ToString();
+               combineLength = combineCheck.Length - 1; //de lengte van het op te nemen bedrag minus de "1" of "0" voor de bonkeuze
+               totaal = combineLength.ToString() + combineCheck; //de totale string die naar de Arduino verzonden moet worden
+          
+                for (int i = 0; i < combineLength + 2; i++ ){ //hakt de totaal string in losse strings (de Arduino kan geen hele string inlezen, dit gaf problemen)
+
+                    sp.Write(totaal.Substring(i, 1)); //verstuurt telkens 1 getal (als string) uit de totaal string
+
+                }
+                
+                data = sp.ReadByte(); //ontvang data van de Arduino
+
+                /*
+                Wanneer de Arduino klaar is met het uigeven van het geld (en eventueel de bon) stuurt deze de code 112 (zelf verzonnen code) naar de GUI.
+                Op deze manier weet de GUI precies wanneer hij weer terug kan keren naar het beginscherm (namelijk wanneer het geld is uitgegeven) */
+
+                if (data == 112) { //wanneer 112 ontvangen wordt van de Arduino
+                    
+                    SceneManager.LoadScene(beginScreen); //laad het beginscherm (een andere rekeninghouder kan nu gebruik maken van de geldautomaat)
+                     
+                }
+    
+            }
+            catch (System.Exception){} //doe niks wanneer het voorgaande stuk code niet werkte
+        }
+    }
+
+}
